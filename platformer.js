@@ -26,12 +26,16 @@ platformer.World.prototype.createPlatform = function(options)
 {
 	var platform = new platformer.Platform(options || {})
 	this.platforms.push(platform)
+	
+	return platform
 }
 
 platformer.World.prototype.createPlayer = function(options)
 {
 	var player = new platformer.Player(options || {})
 	this.players.push(player)
+	
+	return player
 }
 
 // dt is in seconds
@@ -47,6 +51,33 @@ platformer.World.prototype.update = function(dt)
 		
 		// position update from velocity integration
 		vec2.scaleAndAdd(player.position, player.position, player.velocity, dt)
+		
+		// collision with platforms
+		player.grounded = false
+		for (var i = 0; i < this.platforms.length; i++)
+		{
+			var platform = this.platforms[i]
+			
+			var collisionInfo = platform.collide(player)
+			if (collisionInfo)
+			{
+				var velocityDotNormal = vec2.dot(player.velocity, collisionInfo.normal)
+				
+				// exclude this contact if it is separating
+				if (velocityDotNormal > 0)
+					return
+				
+				// fix interpenetration
+				vec2.scaleAndAdd(player.position, player.position, collisionInfo.normal, collisionInfo.depth)
+				
+				// keep only tangent velocity
+				vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -velocityDotNormal)
+				
+				// check if we collided with the ground
+				if (collisionInfo.normal[1] > Math.abs(collisionInfo.normal[0]))
+					player.grounded = true
+			}
+		}
 	}
 	
 	if (this.debugCanvas)
@@ -102,6 +133,36 @@ platformer.Platform = function(options)
 	this.size = vec2.clone(size)
 }
 
+platformer.Platform.prototype.collide = function(player)
+{
+	var collisionInfo = {
+		normal: null,
+		depth: null
+	}
+	
+	function testOverlap(overlap, normal)
+	{
+		if (overlap < 0)
+			return false
+		
+		if ((collisionInfo.depth === null) || (overlap < collisionInfo.depth))
+		{
+			// new minimal overlap found
+			collisionInfo.depth = overlap
+			collisionInfo.normal = normal
+		}
+		
+		return true
+	}
+	
+	if (!testOverlap(this.position[0] + this.size[0] - player.position[0], vec2.fromValues(1, 0))) return null
+	if (!testOverlap(player.position[0] + player.size[0] - this.position[0], vec2.fromValues(-1, 0))) return null
+	if (!testOverlap(this.position[1] + this.size[1] - player.position[1], vec2.fromValues(0, 1))) return null
+	if (!testOverlap(player.position[1] + player.size[1] - this.position[1], vec2.fromValues(0, -1))) return null
+	
+	return collisionInfo
+}
+
 platformer.Player = function(options)
 {
 	var position = options.position || [0, 0]
@@ -111,4 +172,18 @@ platformer.Player = function(options)
 	this.position = vec2.clone(position)
 	this.velocity = vec2.clone(velocity)
 	this.size = vec2.clone(size)
+	this.moveSpeed = options.moveSpeed || 2
+	this.jumpSpeed = options.jumpSpeed || 5
+	
+	this.grounded = false
+}
+
+platformer.Player.prototype.moveHorizontally = function(factor)
+{
+	this.velocity[0] = this.moveSpeed * factor
+}
+
+platformer.Player.prototype.jump = function()
+{
+	this.velocity[1] = this.jumpSpeed
 }
