@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>platformer.js demo</title>
+	</head>
+	<body>
+		<canvas id="platformerDebug" width="1280" height="720"></canvas>
+		<script type="text/javascript" src="gl-matrix.js"></script>
+		<script type="text/javascript" src="platformer.js"></script>
+		<script type="text/javascript">
+			var world = new platformer.World()
+			
+			var platform = world.createPlatform()
+			var platform2 = world.createPlatform({size: [2, 1], position: [2, 0]})
+			
+			var player = world.createPlayer({size: [0.4, 1], position: [0.5, 2]})
+			
+			var canvas = document.getElementById("platformerDebug")
+			world.enableDebug(canvas)
+			
+			var currentTime = null
+			function render(timestamp)
+			{
+				timestamp *= 0.001 // milliseconds to seconds
+				
+				var dt = 0
+				if (currentTime != null)
+					dt = timestamp - this.currentTime
+				currentTime = timestamp
+				
+				world.update(dt)
+				
+				requestAnimationFrame(render)
+			}
+			
+			requestAnimationFrame(render)
+		</script>
+	</body>
+</html>
