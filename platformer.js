@@ -187,3 +187,40 @@ platformer.Player.prototype.jump = function()
 {
 	this.velocity[1] = this.jumpSpeed
 }
+
+platformer.EventDispatcher = function()
+{
+	this.listeners = {}
+}
+
+platformer.EventDispatcher.prototype.addEventListener = function(name, listener)
+{
+	if (!this.listeners[name])
+		this.listeners[name] = []
+	
+	this.listeners[name].push(listener)
+}
+
+platformer.EventDispatcher.prototype.removeEventListener = function(name, listener)
+{
+	this.listeners[name].splice(this.listeners[name].indexOf(listener))
+}
+
+platformer.EventDispatcher.prototype.hasEventListener = function(name, listener)
+{
+	if (!this.listeners[name])
+		return false
+	
+	return (this.listeners[name].indexOf(listener) != -1)
+}
+
+platformer.EventDispatcher.prototype.dispatchEvent = function(name, event)
+{
+	if (!this.listeners[name])
+		return
+	
+	this.listeners[name].apply(function(listener)
+	{
+		listener(event)
+	})
+}
