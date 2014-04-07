@@ -15,6 +15,8 @@ platformer.World = function(options)
 	var gravity = options.gravity || [0, -9.8]
 	
 	this.gravity = vec2.clone(gravity)
+	this.timeStep = options.timeStep || 0.01
+	this.remainingUpdateTime = 0
 	
 	this.platforms = []
 	this.players = []
@@ -40,6 +42,16 @@ platformer.World.prototype.createPlayer = function(options)
 
 // dt is in seconds
 platformer.World.prototype.update = function(dt)
+{
+	this.remainingUpdateTime += dt
+	while (this.remainingUpdateTime >= this.timeStep)
+	{
+		this.remainingUpdateTime -= this.timeStep
+		this.updateStep(this.timeStep)
+	}
+}
+
+platformer.World.prototype.updateStep = function(dt)
 {
 	// update player dynamics
 	for (var i = 0; i < this.players.length; i++)
