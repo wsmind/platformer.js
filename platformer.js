@@ -51,53 +51,57 @@ platformer.World.prototype.update = function(dt)
 	}
 }
 
-platformer.World.prototype.updateStep = function(dt)
+platformer.World.prototype.updateStep = function()
 {
-	// update player dynamics
-	for (var i = 0; i < this.players.length; i++)
-	{
-		var player = this.players[i]
-		
-		// acceleration from forces (gravity)
-		vec2.scaleAndAdd(player.velocity, player.velocity, this.gravity, dt)
-		
-		// position update from velocity integration
-		vec2.scaleAndAdd(player.position, player.position, player.velocity, dt)
-		
-		// collision with platforms
-		player.grounded = false
-		for (var i = 0; i < this.platforms.length; i++)
-		{
-			var platform = this.platforms[i]
-			
-			var collisionInfo = {
-				normal: null,
-				depth: null
-			}
-			if (platform.collide(player, collisionInfo))
-			{
-				var velocityDotNormal = vec2.dot(player.velocity, collisionInfo.normal)
-				
-				// exclude this contact if it is separating
-				if (velocityDotNormal > 0)
-					return
-				
-				// fix interpenetration
-				vec2.scaleAndAdd(player.position, player.position, collisionInfo.normal, collisionInfo.depth)
-				
-				// keep only tangent velocity
-				vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -velocityDotNormal)
-				
-				// check if we collided with the ground
-				if (collisionInfo.normal[1] > Math.abs(collisionInfo.normal[0]))
-					player.grounded = true
-			}
-		}
+	// reuse one temporary object for all collision tests
+	var collisionInfo = {
+		normal: vec2.create(),
+		depth: null
 	}
 	
-	if (this.debugCanvas)
-		this.drawDebug()
-}
+	return function(dt)
+	{
+		// update player dynamics
+		for (var i = 0; i < this.players.length; i++)
+		{
+			var player = this.players[i]
+			
+			// acceleration from forces (gravity)
+			vec2.scaleAndAdd(player.velocity, player.velocity, this.gravity, dt)
+			
+			// position update from velocity integration
+			vec2.scaleAndAdd(player.position, player.position, player.velocity, dt)
+			
+			// collision with platforms
+			player.grounded = false
+			for (var i = 0; i < this.platforms.length; i++)
+			{
+				var platform = this.platforms[i]
+				if (platform.collide(player, collisionInfo))
+				{
+					var velocityDotNormal = vec2.dot(player.velocity, collisionInfo.normal)
+					
+					// exclude this contact if it is separating
+					if (velocityDotNormal > 0)
+						return
+					
+					// fix interpenetration
+					vec2.scaleAndAdd(player.position, player.position, collisionInfo.normal, collisionInfo.depth)
+					
+					// keep only tangent velocity
+					vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -velocityDotNormal)
+					
+					// check if we collided with the ground
+					if (collisionInfo.normal[1] > Math.abs(collisionInfo.normal[0]))
+						player.grounded = true
+				}
+			}
+		}
+		
+		if (this.debugCanvas)
+			this.drawDebug()
+	}
+}()
 
 platformer.World.prototype.enableDebug = function(canvas)
 {
