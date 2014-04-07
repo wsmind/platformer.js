@@ -58,8 +58,11 @@ platformer.World.prototype.update = function(dt)
 		{
 			var platform = this.platforms[i]
 			
-			var collisionInfo = platform.collide(player)
-			if (collisionInfo)
+			var collisionInfo = {
+				normal: null,
+				depth: null
+			}
+			if (platform.collide(player, collisionInfo))
 			{
 				var velocityDotNormal = vec2.dot(player.velocity, collisionInfo.normal)
 				
@@ -105,19 +108,17 @@ platformer.World.prototype.drawDebug = function()
 	context.translate(this.debugCanvas.width * 0.5, this.debugCanvas.height * 0.5)
 	context.scale(100, -100)
 	
+	context.fillStyle = "#ff0"
 	for (var i = 0; i < this.platforms.length; i++)
 	{
 		var platform = this.platforms[i]
-		
-		context.fillStyle = "#ff0"
 		context.fillRect(platform.position[0], platform.position[1], platform.size[0], platform.size[1])
 	}
 	
+	context.fillStyle = "#0f0"
 	for (var i = 0; i < this.players.length; i++)
 	{
 		var player = this.players[i]
-		
-		context.fillStyle = "#0f0"
 		context.fillRect(player.position[0], player.position[1], player.size[0], player.size[1])
 	}
 	
@@ -133,35 +134,41 @@ platformer.Platform = function(options)
 	this.size = vec2.clone(size)
 }
 
-platformer.Platform.prototype.collide = function(player)
+platformer.Platform.prototype.collide = function()
 {
-	var collisionInfo = {
-		normal: null,
-		depth: null
-	}
+	// create temporary vectors only once
+	var LEFT = vec2.fromValues(-1, 0)
+	var RIGHT = vec2.fromValues(1, 0)
+	var UP = vec2.fromValues(0, 1)
+	var DOWN = vec2.fromValues(0, -1)
 	
-	function testOverlap(overlap, normal)
+	return function(player, collisionInfo)
 	{
-		if (overlap < 0)
-			return false
+		collisionInfo.depth = null
 		
-		if ((collisionInfo.depth === null) || (overlap < collisionInfo.depth))
+		function testOverlap(overlap, normal)
 		{
-			// new minimal overlap found
-			collisionInfo.depth = overlap
-			collisionInfo.normal = normal
+			if (overlap < 0)
+				return false
+			
+			if ((collisionInfo.depth === null) || (overlap < collisionInfo.depth))
+			{
+				// new minimal overlap found
+				collisionInfo.depth = overlap
+				collisionInfo.normal = normal
+			}
+			
+			return true
 		}
+		
+		if (!testOverlap(this.position[0] + this.size[0] - player.position[0], RIGHT)) return false
+		if (!testOverlap(player.position[0] + player.size[0] - this.position[0], LEFT)) return false
+		if (!testOverlap(this.position[1] + this.size[1] - player.position[1], UP)) return false
+		if (!testOverlap(player.position[1] + player.size[1] - this.position[1], DOWN)) return false
 		
 		return true
 	}
-	
-	if (!testOverlap(this.position[0] + this.size[0] - player.position[0], vec2.fromValues(1, 0))) return null
-	if (!testOverlap(player.position[0] + player.size[0] - this.position[0], vec2.fromValues(-1, 0))) return null
-	if (!testOverlap(this.position[1] + this.size[1] - player.position[1], vec2.fromValues(0, 1))) return null
-	if (!testOverlap(player.position[1] + player.size[1] - this.position[1], vec2.fromValues(0, -1))) return null
-	
-	return collisionInfo
-}
+}()
 
 platformer.Player = function(options)
 {
