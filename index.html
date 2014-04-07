@@ -10,7 +10,7 @@
 		<script type="text/javascript">
 			var world = new platformer.World()
 			
-			world.createPlatform()
+			var platform = world.createPlatform({size: [2, 1], position: [0, 1.4]})
 			world.createPlatform({size: [2, 1], position: [2, 0]})
 			world.createPlatform({size: [1, 1], position: [2, 1]})
 			world.createPlatform({size: [100, 0.2], position: [-50, 0]})
@@ -22,20 +22,20 @@
 			
 			window.onkeydown = function(event)
 			{
-				if (event.key == "Left")
+				if (event.keyCode == 37) // left
 					leftPressed = true
-				else if (event.key == "Right")
+				else if (event.keyCode == 39) // right
 					rightPressed = true
 				
-				if ((event.key == " ") && player.grounded)
+				if ((event.keyCode == 32) && player.grounded) // space
 					player.jump()
 			}
 			
 			window.onkeyup = function(event)
 			{
-				if (event.key == "Left")
+				if (event.keyCode == 37) // left
 					leftPressed = false
-				else if (event.key == "Right")
+				else if (event.keyCode == 39) // right
 					rightPressed = false
 			}
 			
@@ -56,6 +56,19 @@
 				if (leftPressed) move -= 1
 				if (rightPressed) move += 1
 				player.moveHorizontally(move)
+				
+				navigator.getGamepads = navigator.getGamepads || navigator.webkitGetGamepads
+				var gamepads = navigator.getGamepads()
+				if ((gamepads.length > 0) && gamepads[0])
+				{
+					var pad = gamepads[0]
+					player.moveHorizontally(pad.axes[0])
+					
+					if (pad.buttons[0].pressed && player.grounded)
+						player.jump()
+				}
+				
+				platform.position[1] = Math.sin(currentTime) * 2
 				
 				world.update(dt)
 				
