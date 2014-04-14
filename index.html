@@ -10,10 +10,11 @@
 		<script type="text/javascript">
 			var world = new platformer.World()
 			
-			var platform = world.createPlatform({size: [2, 1], position: [0, 1.4]})
+			var platform = world.createPlatform({size: [2, 1], position: [0, 1.2]})
 			world.createPlatform({size: [2, 1], position: [2, 0]})
 			world.createPlatform({size: [1, 1], position: [2, 1]})
 			world.createPlatform({size: [100, 0.2], position: [-50, 0]})
+			world.createPlatform({size: [1, 1], position: [-3, 0]})
 			
 			var player = world.createPlayer({size: [0.4, 1], position: [0.5, 2]})
 			
@@ -27,7 +28,7 @@
 				else if (event.keyCode == 39) // right
 					rightPressed = true
 				
-				if ((event.keyCode == 32) && player.grounded) // space
+				if ((event.keyCode == 32) && player.groundPlatform) // space
 					player.jump()
 			}
 			
@@ -64,11 +65,12 @@
 					var pad = gamepads[0]
 					player.moveHorizontally(pad.axes[0])
 					
-					if (pad.buttons[0].pressed && player.grounded)
-						player.jump()
+					if (pad.buttons[0].pressed && player.groundPlatform)
+						player.jump(dt)
 				}
 				
-				platform.position[1] = Math.sin(currentTime) * 2
+				platform.position[0] = Math.cos(currentTime) * 2 - 1
+				//platform.position[1] = Math.sin(currentTime) * 1 + 1
 				
 				world.update(dt)
 				

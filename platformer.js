@@ -43,12 +43,13 @@ platformer.World.prototype.createPlayer = function(options)
 // dt is in seconds
 platformer.World.prototype.update = function(dt)
 {
-	this.remainingUpdateTime += dt
+	/*this.remainingUpdateTime += dt
 	while (this.remainingUpdateTime >= this.timeStep)
 	{
 		this.remainingUpdateTime -= this.timeStep
 		this.updateStep(this.timeStep)
-	}
+	}*/
+	this.updateStep(dt)
 }
 
 platformer.World.prototype.updateStep = function()
@@ -59,12 +60,44 @@ platformer.World.prototype.updateStep = function()
 		depth: null
 	}
 	
+	var relativeVelocity = vec2.create()
+	
 	return function(dt)
 	{
+		// compute platform velocities
+		for (var i = 0; i < this.platforms.length; i++)
+		{
+			var platform = this.platforms[i]
+			
+			// velocity = (position - lastFramePosition) / dt
+			vec2.copy(platform.velocity, platform.position)
+			vec2.subtract(platform.velocity, platform.velocity, platform.lastFramePosition)
+			vec2.scale(platform.velocity, platform.velocity, 1.0 / dt)
+			
+			vec2.copy(platform.lastFramePosition, platform.position)
+		}
+		
 		// update player dynamics
 		for (var i = 0; i < this.players.length; i++)
 		{
 			var player = this.players[i]
+			
+			if (player.groundPlatform)
+			{
+				// possible platform movement
+				vec2.copy(player.velocity, player.groundPlatform.velocity)
+				
+				// ground control
+				player.velocity[0] += player.horizontalInputFactor * player.groundSpeed
+			}
+			else
+			{
+				// air control
+				player.velocity[0] = player.horizontalInputFactor * player.airSpeed
+			}
+			
+			// reset input for this frame
+			player.horizontalInputFactor = 0.0
 			
 			// acceleration from forces (gravity)
 			vec2.scaleAndAdd(player.velocity, player.velocity, this.gravity, dt)
@@ -73,27 +106,28 @@ platformer.World.prototype.updateStep = function()
 			vec2.scaleAndAdd(player.position, player.position, player.velocity, dt)
 			
 			// collision with platforms
-			player.grounded = false
+			player.groundPlatform = null
 			for (var i = 0; i < this.platforms.length; i++)
 			{
 				var platform = this.platforms[i]
 				if (platform.collide(player, collisionInfo))
 				{
-					var velocityDotNormal = vec2.dot(player.velocity, collisionInfo.normal)
-					
 					// exclude this contact if it is separating
-					if (velocityDotNormal > 0)
-						return
+					vec2.subtract(relativeVelocity, player.velocity, platform.velocity)
+					if (vec2.dot(relativeVelocity, collisionInfo.normal) > 0)
+						continue
 					
 					// fix interpenetration
 					vec2.scaleAndAdd(player.position, player.position, collisionInfo.normal, collisionInfo.depth)
 					
 					// keep only tangent velocity
-					vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -velocityDotNormal)
+					vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -vec2.dot(relativeVelocity, collisionInfo.normal))
 					
 					// check if we collided with the ground
 					if (collisionInfo.normal[1] > Math.abs(collisionInfo.normal[0]))
-						player.grounded = true
+					{
+						player.groundPlatform = platform
+					}
 				}
 			}
 		}
@@ -106,16 +140,18 @@ platformer.World.prototype.updateStep = function()
 platformer.World.prototype.enableDebug = function(canvas)
 {
 	this.debugCanvas = canvas
+	this.debugContext = this.debugCanvas.getContext("2d")
 }
 
 platformer.World.prototype.disableDebug = function()
 {
 	this.debugCanvas = null
+	this.debugContext = null
 }
 
 platformer.World.prototype.drawDebug = function()
 {
-	var context = this.debugCanvas.getContext("2d")
+	var context = this.debugContext
 	
 	context.fillStyle = "#000"
 	context.fillRect(0, 0, this.debugCanvas.width, this.debugCanvas.height)
@@ -147,6 +183,8 @@ platformer.Platform = function(options)
 	var size = options.size || [1, 1]
 	
 	this.position = vec2.clone(position)
+	this.lastFramePosition = vec2.clone(position)
+	this.velocity = vec2.fromValues(0.0, 0.0)
 	this.size = vec2.clone(size)
 }
 
@@ -194,21 +232,24 @@ platformer.Player = function(options)
 	
 	this.position = vec2.clone(position)
 	this.velocity = vec2.clone(velocity)
+	this.horizontalInputFactor = 0
 	this.size = vec2.clone(size)
-	this.moveSpeed = options.moveSpeed || 2
+	this.groundSpeed = options.groundSpeed || 4
+	this.airSpeed = options.airSpeed || 4
 	this.jumpSpeed = options.jumpSpeed || 5
 	
-	this.grounded = false
+	this.groundPlatform = null
 }
 
 platformer.Player.prototype.moveHorizontally = function(factor)
 {
-	this.velocity[0] = this.moveSpeed * factor
+	this.horizontalInputFactor = factor
 }
 
-platformer.Player.prototype.jump = function()
+platformer.Player.prototype.jump = function(dt)
 {
-	this.velocity[1] = this.jumpSpeed
+	this.velocity[1] += this.jumpSpeed
+	this.groundPlatform = null
 }
 
 platformer.EventDispatcher = function()
