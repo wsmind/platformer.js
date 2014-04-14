@@ -43,13 +43,12 @@ platformer.World.prototype.createPlayer = function(options)
 // dt is in seconds
 platformer.World.prototype.update = function(dt)
 {
-	/*this.remainingUpdateTime += dt
+	this.remainingUpdateTime += dt
 	while (this.remainingUpdateTime >= this.timeStep)
 	{
 		this.remainingUpdateTime -= this.timeStep
 		this.updateStep(this.timeStep)
-	}*/
-	this.updateStep(dt)
+	}
 }
 
 platformer.World.prototype.updateStep = function()
@@ -159,6 +158,8 @@ platformer.World.prototype.drawDebug = function()
 	context.save()
 	context.translate(this.debugCanvas.width * 0.5, this.debugCanvas.height * 0.5)
 	context.scale(100, -100)
+	if (this.players.length > 0)
+		context.translate(-this.players[0].position[0], -this.players[0].position[1])
 	
 	context.fillStyle = "#ff0"
 	for (var i = 0; i < this.platforms.length; i++)
