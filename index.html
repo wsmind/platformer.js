@@ -6,8 +6,8 @@
 	<body>
 		<canvas id="platformerDebug" width="1280" height="720"></canvas>
 		<script type="text/javascript" src="gl-matrix.js"></script>
-		<script type="text/javascript" src="platformer.js"></script>
 		<script type="text/javascript" src="EventDispatcher.js"></script>
+		<script type="text/javascript" src="platformer.js"></script>
 		<script type="text/javascript">
 			var world = new platformer.World()
 			
@@ -24,6 +24,16 @@
 			}
 			
 			var player = world.createPlayer({size: [0.4, 1], position: [0.5, 2]})
+			
+			player.addEventListener("hitGround", function(event)
+			{
+				console.log(event)
+			})
+			
+			player.addEventListener("hitWall", function(event)
+			{
+				console.log(event)
+			})
 			
 			var leftPressed = false
 			var rightPressed = false

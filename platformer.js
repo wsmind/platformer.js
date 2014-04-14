@@ -48,12 +48,22 @@ platformer.World.prototype.createPlatform = function(options)
 	return platform
 }
 
+platformer.World.prototype.destroyPlatform = function(platform)
+{
+	this.platforms.splice(this.platforms.indexOf(platform), 1)
+}
+
 platformer.World.prototype.createPlayer = function(options)
 {
 	var player = new platformer.Player(options || {})
 	this.players.push(player)
 	
 	return player
+}
+
+platformer.World.prototype.destroyPlayer = function(player)
+{
+	this.players.splice(this.players.indexOf(player), 1)
 }
 
 // dt is in seconds
@@ -121,27 +131,37 @@ platformer.World.prototype.updateStep = function()
 			vec2.scaleAndAdd(player.position, player.position, player.velocity, dt)
 			
 			// collision with platforms
+			var previousGroundPlatform = player.groundPlatform
 			player.groundPlatform = null
 			for (var i = 0; i < this.platforms.length; i++)
 			{
 				var platform = this.platforms[i]
 				if (platform.collide(player, collisionInfo))
 				{
-					// exclude this contact if it is separating
 					vec2.subtract(relativeVelocity, player.velocity, platform.velocity)
-					if (vec2.dot(relativeVelocity, collisionInfo.normal) > 0)
+					var relativeVelocityDotNormal = vec2.dot(relativeVelocity, collisionInfo.normal)
+					
+					// exclude this contact if it is separating
+					if (relativeVelocityDotNormal > 0)
 						continue
 					
 					// fix interpenetration
 					vec2.scaleAndAdd(player.position, player.position, collisionInfo.normal, collisionInfo.depth)
 					
 					// keep only tangent velocity
-					vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -vec2.dot(relativeVelocity, collisionInfo.normal))
+					vec2.scaleAndAdd(player.velocity, player.velocity, collisionInfo.normal, -relativeVelocityDotNormal)
 					
 					// check if we collided with the ground
 					if (collisionInfo.normal[1] > Math.abs(collisionInfo.normal[0]))
 					{
 						player.groundPlatform = platform
+						
+						if (previousGroundPlatform == null)
+							player.dispatchEvent({type: "hitGround", platform: platform, strength: -relativeVelocityDotNormal})
+					}
+					else
+					{
+						player.dispatchEvent({type: "hitWall", platform: platform, strength: -relativeVelocityDotNormal})
 					}
 				}
 			}
@@ -257,6 +277,8 @@ platformer.Player = function(options)
 	
 	this.groundPlatform = null
 }
+
+EventDispatcher.prototype.apply(platformer.Player.prototype)
 
 platformer.Player.prototype.moveHorizontally = function(factor)
 {
