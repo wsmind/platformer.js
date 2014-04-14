@@ -63,7 +63,8 @@
 				if ((gamepads.length > 0) && gamepads[0])
 				{
 					var pad = gamepads[0]
-					player.moveHorizontally(pad.axes[0])
+					var move = (Math.abs(pad.axes[0]) > 0.4) ? pad.axes[0] : 0.0 // basic deadzone
+					player.moveHorizontally(move)
 					
 					if (pad.buttons[0].pressed && player.groundPlatform)
 						player.jump(dt)
